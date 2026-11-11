@@ -95,10 +95,10 @@ button{font:inherit;color:var(--ink);background:var(--surf);border:1px solid var
 <div id="claveModal" class="modal" hidden>
 <form id="claveForm" class="modal-box" aria-labelledby="claveTitulo">
 <h2 id="claveTitulo">Autorizar cambio de pago</h2>
-<p>Escribe la clave para registrar o modificar este pago.</p>
+<p id="claveDescripcion">Escribe la clave para registrar o modificar este pago.</p>
 <label>Clave de autorización<input id="claveInput" type="password" inputmode="numeric" autocomplete="off" required></label>
 <p id="claveError" class="modal-error" role="alert"></p>
-<div class="modal-actions"><button id="claveCancelar" type="button">Cancelar</button><button type="submit">Confirmar</button></div>
+<div class="modal-actions"><button id="claveCancelar" type="button">Cancelar</button><button id="claveConfirmar" type="submit">OK</button></div>
 </form>
 </div>
 <script>
@@ -106,6 +106,7 @@ button{font:inherit;color:var(--ink);background:var(--surf);border:1px solid var
 // Ejemplo: "https://mi-proyecto-default-rtdb.firebaseio.com". Si queda vacío, se guarda solo en este dispositivo.
 const FIREBASE_URL="https://deudas-naturales-default-rtdb.firebaseio.com";
 const CLAVE_PAGO="39741805";
+const CLAVE_AUTORIZACION="1076668045";
 
 const LS="plan_credito_v1";
 const $=id=>document.getElementById(id);
@@ -196,9 +197,14 @@ function aplicar(d){
 }
 
 let resolverClave=null;
+let pasoClave=1;
 function autorizarPago(){
   return new Promise(resolve=>{
     resolverClave=resolve;
+    pasoClave=1;
+    $("claveTitulo").textContent="Autorizar cambio de pago";
+    $("claveDescripcion").textContent="Escribe la clave para registrar o modificar este pago.";
+    $("claveConfirmar").textContent="Continuar";
     $("claveInput").value="";
     $("claveError").textContent="";
     $("claveModal").hidden=false;
@@ -254,7 +260,16 @@ $("rows").addEventListener("change",e=>{
 });
 $('claveForm').addEventListener('submit',e=>{
   e.preventDefault();
-  if($('claveInput').value===CLAVE_PAGO)finalizarAutorizacion(true);
+  const clave=$('claveInput').value;
+  if(pasoClave===1&&clave===CLAVE_PAGO){
+    pasoClave=2;
+    $('claveTitulo').textContent="Autorizar cambio";
+    $('claveDescripcion').textContent="El cambio está bloqueado. Escribe la clave de autorización para continuar.";
+    $('claveInput').value="";
+    $('claveError').textContent="";
+    $('claveConfirmar').textContent="OK";
+    $('claveInput').focus();
+  }else if(pasoClave===2&&clave===CLAVE_AUTORIZACION)finalizarAutorizacion(true);
   else $('claveError').textContent="La clave no es correcta.";
 });
 $("claveCancelar").addEventListener("click",()=>finalizarAutorizacion(false));
