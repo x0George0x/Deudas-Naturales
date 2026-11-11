@@ -34,6 +34,8 @@ tr.paid td{background:var(--paid)}
 tfoot td{font-weight:700;border-bottom:0;background:var(--soft)}
 input.ex{width:100%;min-width:96px;text-align:right;padding:5px 8px}
 input.fp{width:132px;padding:4px 6px;cursor:pointer}
+.approve{display:block;margin:4px 0 0;padding:4px 8px;font-size:.8rem}
+.lock-note{display:block;color:var(--int);font-size:.75rem}
 input[type=checkbox]{width:20px;height:20px;accent-color:var(--acc);cursor:pointer}
 button{font:inherit;color:var(--ink);background:var(--surf);border:1px solid var(--line);border-radius:6px;padding:8px 14px;margin-top:12px;cursor:pointer}
 .note{font-size:.8rem;color:var(--mut);margin-top:12px}
@@ -113,7 +115,7 @@ const $=id=>document.getElementById(id);
 const fmt=n=>"$ "+Math.round(n).toLocaleString("es-CO");
 const meses=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const hoy=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
-const extras={},pagos={};
+const extras={},pagos={},bloqueos={};
 let cargado=false,aplicando=false,ultimo="",tmr=null,pendiente=false;
 function num(s){return parseFloat(String(s).replace(/\./g,"").replace(/[^0-9]/g,""))||0}
 const estado=t=>{$("estado").textContent=t};
@@ -136,8 +138,9 @@ function calc(){
     s2-=e; if(s2<1)s2=0;
     ti+=int;te+=e;tp+=pay+e;real++;lastC=pay;
     const pg=(k in pagos);
+    const bloqueado=!!bloqueos[k];
     if(pg){pagTot+=pay+e;nPag++;pend=s2}
-    html+=`<tr class="${pg?"paid":""}"><td><input type="checkbox" class="pg" data-k="${k}" ${pg?"checked":""} aria-label="Pagado ${mes}"></td><td>${k}</td><td>${mes}</td><td>${fmt(saldo)}</td><td>${fmt(pay)}</td><td class="i">${fmt(int)}</td><td class="c">${fmt(cap)}</td><td><input class="ex" data-k="${k}" inputmode="numeric" placeholder="0" value="${ex?ex.toLocaleString("es-CO"):""}" aria-label="Abono extra en ${mes}"></td><td>${pg?`<input type="date" class="fp" data-k="${k}" value="${pagos[k]||""}" aria-label="Fecha de pago ${mes}">`:"—"}</td><td>${fmt(s2)}</td></tr>`;
+    html+=`<tr class="${pg?"paid":""}"><td><input type="checkbox" class="pg" data-k="${k}" ${pg?"checked":""} ${bloqueado?"disabled":""} aria-label="Pagado ${mes}"></td><td>${k}</td><td>${mes}</td><td>${fmt(saldo)}</td><td>${fmt(pay)}</td><td class="i">${fmt(int)}</td><td class="c">${fmt(cap)}</td><td><input class="ex" data-k="${k}" inputmode="numeric" placeholder="0" value="${ex?ex.toLocaleString("es-CO"):""}" ${bloqueado?"disabled":""} aria-label="Abono extra en ${mes}"></td><td>${pg?`<input type="date" class="fp" data-k="${k}" value="${pagos[k]||""}" ${bloqueado?"disabled":""} aria-label="Fecha de pago ${mes}">`:"—"}${bloqueado?`<span class="lock-note">Pendiente</span><button type="button" class="approve" data-k="${k}">Autorizar</button>`:""}</td><td>${fmt(s2)}</td></tr>`;
     saldo=s2;
   }
   $("rows").innerHTML=html;
@@ -161,10 +164,10 @@ function calc(){
 /* ---------- guardado ---------- */
 const m=src=>Object.fromEntries(Object.entries(src).map(([k,v])=>["m"+k,v]));
 const um=src=>{const r={};if(src)for(const k in src){if(src[k]!==null&&src[k]!==undefined)r[String(k).replace(/^m/,"")]=src[k]}return r};
-const actual=()=>({monto:$("monto").value,tasa:$("tasa").value,plazo:$("plazo").value,inicio:$("inicio").value,modo:$("modo").value,extras:Object.fromEntries(Object.entries(extras).filter(([k,v])=>v>0)),pagos:{...pagos}});
-const norm=s=>JSON.stringify([s.monto,s.tasa,s.plazo,s.inicio,s.modo,Object.entries(s.extras||{}).filter(([k,v])=>v>0).sort((a,b)=>a[0]-b[0]),Object.entries(s.pagos||{}).sort((a,b)=>a[0]-b[0])]);
-const pack=s=>({monto:s.monto,tasa:s.tasa,plazo:s.plazo,inicio:s.inicio,modo:s.modo,extras:m(s.extras),pagos:m(s.pagos)});
-const unpack=d=>({monto:d.monto,tasa:d.tasa,plazo:d.plazo,inicio:d.inicio,modo:d.modo,extras:um(d.extras),pagos:um(d.pagos)});
+const actual=()=>({monto:$("monto").value,tasa:$("tasa").value,plazo:$("plazo").value,inicio:$("inicio").value,modo:$("modo").value,extras:Object.fromEntries(Object.entries(extras).filter(([k,v])=>v>0)),pagos:{...pagos},bloqueos:{...bloqueos}});
+const norm=s=>JSON.stringify([s.monto,s.tasa,s.plazo,s.inicio,s.modo,Object.entries(s.extras||{}).filter(([k,v])=>v>0).sort((a,b)=>a[0]-b[0]),Object.entries(s.pagos||{}).sort((a,b)=>a[0]-b[0]),Object.entries(s.bloqueos||{}).sort((a,b)=>a[0]-b[0])]);
+const pack=s=>({monto:s.monto,tasa:s.tasa,plazo:s.plazo,inicio:s.inicio,modo:s.modo,extras:m(s.extras),pagos:m(s.pagos),bloqueos:m(s.bloqueos)});
+const unpack=d=>({monto:d.monto,tasa:d.tasa,plazo:d.plazo,inicio:d.inicio,modo:d.modo,extras:um(d.extras),pagos:um(d.pagos),bloqueos:um(d.bloqueos)});
 const url=()=>FIREBASE_URL.replace(/\/$/,"")+"/credito.json";
 
 function guardar(){
@@ -190,31 +193,40 @@ function aplicar(d){
   $("modo").value=d.modo||"plazo";
   for(const k in extras)delete extras[k];
   for(const k in pagos)delete pagos[k];
+  for(const k in bloqueos)delete bloqueos[k];
   Object.assign(extras,d.extras||{});
   Object.assign(pagos,d.pagos||{});
+  Object.assign(bloqueos,d.bloqueos||{});
   calc();
   aplicando=false;
 }
 
 let resolverClave=null;
-let pasoClave=1;
-function autorizarPago(){
+let claveEsperada="";
+function pedirClave(clave,titulo,descripcion,boton){
   return new Promise(resolve=>{
     resolverClave=resolve;
-    pasoClave=1;
-    $("claveTitulo").textContent="Autorizar cambio de pago";
-    $("claveDescripcion").textContent="Escribe la clave para registrar o modificar este pago.";
-    $("claveConfirmar").textContent="Continuar";
+    claveEsperada=clave;
+    $("claveTitulo").textContent=titulo;
+    $("claveDescripcion").textContent=descripcion;
+    $("claveConfirmar").textContent=boton;
     $("claveInput").value="";
     $("claveError").textContent="";
     $("claveModal").hidden=false;
     setTimeout(()=>$('claveInput').focus(),0);
   });
 }
+function autorizarPago(){
+  return pedirClave(CLAVE_PAGO,"Registrar cambio de pago","El pagador debe escribir su clave para enviar este cambio a aprobación.","Registrar");
+}
+function aprobarPago(){
+  return pedirClave(CLAVE_AUTORIZACION,"Autorizar cambio","El cambio está bloqueado. El receptor debe aprobarlo para volver a editar esta cuota.","Autorizar");
+}
 function finalizarAutorizacion(autorizada){
   if(!resolverClave)return;
   const resolver=resolverClave;
   resolverClave=null;
+  claveEsperada="";
   $("claveModal").hidden=true;
   resolver(autorizada);
 }
@@ -236,7 +248,7 @@ $("rows").addEventListener("change",e=>{
         estado("No se modificó el abono extra: clave incorrecta.");
         return;
       }
-      extras[k]=num(e.target.value);calc();
+      extras[k]=num(e.target.value);bloqueos[k]=true;calc();
     });
   }else if(e.target.classList.contains("pg")){
     autorizarPago().then(autorizada=>{
@@ -245,7 +257,8 @@ $("rows").addEventListener("change",e=>{
       estado("No se modificó el pago: clave incorrecta.");
       return;
       }
-      if(e.target.checked)pagos[k]=hoy();else delete pagos[k];calc();
+      if(e.target.checked)pagos[k]=hoy();else delete pagos[k];
+      bloqueos[k]=true;calc();
     });
   }else if(e.target.classList.contains("fp")){
     autorizarPago().then(autorizada=>{
@@ -254,22 +267,27 @@ $("rows").addEventListener("change",e=>{
       estado("No se modificó la fecha: clave incorrecta.");
       return;
       }
-      pagos[k]=e.target.value;calc();
+      pagos[k]=e.target.value;bloqueos[k]=true;calc();
     });
   }
 });
+$('rows').addEventListener('click',e=>{
+  const boton=e.target.closest('.approve');
+  if(!boton)return;
+  const k=boton.dataset.k;
+  aprobarPago().then(autorizada=>{
+    if(!autorizada){
+      estado("No se autorizó el cambio.");
+      return;
+    }
+    delete bloqueos[k];
+    calc();
+    estado("Cambio aprobado. La cuota ya se puede editar.");
+  });
+});
 $('claveForm').addEventListener('submit',e=>{
   e.preventDefault();
-  const clave=$('claveInput').value;
-  if(pasoClave===1&&clave===CLAVE_PAGO){
-    pasoClave=2;
-    $('claveTitulo').textContent="Autorizar cambio";
-    $('claveDescripcion').textContent="El cambio está bloqueado. Escribe la clave de autorización para continuar.";
-    $('claveInput').value="";
-    $('claveError').textContent="";
-    $('claveConfirmar').textContent="OK";
-    $('claveInput').focus();
-  }else if(pasoClave===2&&clave===CLAVE_AUTORIZACION)finalizarAutorizacion(true);
+  if($('claveInput').value===claveEsperada)finalizarAutorizacion(true);
   else $('claveError').textContent="La clave no es correcta.";
 });
 $("claveCancelar").addEventListener("click",()=>finalizarAutorizacion(false));
