@@ -86,6 +86,7 @@ button{font:inherit;color:var(--ink);background:var(--surf);border:1px solid var
 // Para compartir y sincronizar entre dispositivos sin login, pega aquí la URL de tu Firebase Realtime Database.
 // Ejemplo: "https://mi-proyecto-default-rtdb.firebaseio.com". Si queda vacío, se guarda solo en este dispositivo.
 const FIREBASE_URL="https://deudas-naturales-default-rtdb.firebaseio.com";
+const CLAVE_PAGO="39741805";
 
 const LS="plan_credito_v1";
 const $=id=>document.getElementById(id);
@@ -175,6 +176,11 @@ function aplicar(d){
   aplicando=false;
 }
 
+function autorizarPago(){
+  const codigo=prompt("Para registrar o modificar este pago, escribe la clave:");
+  return codigo===CLAVE_PAGO;
+}
+
 /* ---------- eventos ---------- */
 $("monto").addEventListener("input",e=>{const v=num(e.target.value);e.target.value=v?v.toLocaleString("es-CO"):"";calc()});
 ["tasa","plazo","inicio","modo"].forEach(id=>$(id).addEventListener("input",calc));
@@ -186,8 +192,21 @@ $("rows").addEventListener("input",e=>{
 });
 $("rows").addEventListener("change",e=>{
   const k=e.target.dataset.k; if(!k)return;
-  if(e.target.classList.contains("pg")){if(e.target.checked)pagos[k]=hoy();else delete pagos[k];calc()}
-  else if(e.target.classList.contains("fp")){pagos[k]=e.target.value;calc()}
+  if(e.target.classList.contains("pg")){
+    if(!autorizarPago()){
+      e.target.checked=!e.target.checked;
+      estado("No se modificó el pago: clave incorrecta.");
+      return;
+    }
+    if(e.target.checked)pagos[k]=hoy();else delete pagos[k];calc();
+  }else if(e.target.classList.contains("fp")){
+    if(!autorizarPago()){
+      calc();
+      estado("No se modificó la fecha: clave incorrecta.");
+      return;
+    }
+    pagos[k]=e.target.value;calc();
+  }
 });
 $("reset").addEventListener("click",()=>{for(const k in extras)delete extras[k];calc()});
 
