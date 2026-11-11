@@ -8,16 +8,16 @@
 :root{color-scheme:light;--bg:#f4f8fb;--surf:#ffffff;--ink:#26343f;--mut:#6c7d8a;--line:#e0e8ee;--acc:#2f8f6b;--int:#c9763f;--cap:#2f8f6b;--paid:#e8f6ee;--soft:#f7fafc}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,"Times New Roman",serif}
-main{max-width:1060px;margin:0 auto;padding:24px 16px 40px}
+main{width:100%;max-width:none;margin:0 auto;padding:24px clamp(12px,2vw,32px) 40px}
 h1{font-size:1.6rem;margin:0 0 4px}
 p.sub{margin:0 0 8px;color:var(--mut)}
 #estado{font-size:.85rem;color:var(--mut);margin:0 0 14px}
 .panel{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:16px}
-.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.form{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
 label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--mut)}
 input,select{font:inherit;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:8px}
 input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
-.hero{margin:20px 0;display:grid;grid-template-columns:1fr 1.3fr;gap:12px}
+.hero{margin:20px 0;display:grid;grid-template-columns:minmax(220px,.8fr) minmax(0,1.3fr);gap:12px}
 .big{font-size:2.4rem;font-weight:700;color:var(--acc);line-height:1.1}
 .k{font-size:.85rem;color:var(--mut)}
 .v{font-size:1.15rem;font-weight:700}
@@ -25,19 +25,20 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .bar{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:6px 0 4px;background:var(--line)}
 .bar i{display:block;height:100%}
 .wrap{overflow-x:auto;margin-top:16px;border:1px solid var(--line);border-radius:10px;background:var(--surf)}
-table{border-collapse:collapse;width:100%;min-width:1040px;font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;min-width:980px;font-variant-numeric:tabular-nums}
 th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
 th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
 th{font-size:.82rem;color:var(--mut);font-weight:600;background:var(--soft)}
 td.i{color:var(--int)}td.c{color:var(--cap)}
 tr.paid td{background:var(--paid)}
 tfoot td{font-weight:700;border-bottom:0;background:var(--soft)}
-input.ex{width:120px;text-align:right;padding:5px 8px}
-input.fp{padding:4px 6px}
+input.ex{width:100%;min-width:96px;text-align:right;padding:5px 8px}
+input.fp{width:132px;padding:4px 6px;cursor:pointer}
 input[type=checkbox]{width:20px;height:20px;accent-color:var(--acc);cursor:pointer}
 button{font:inherit;color:var(--ink);background:var(--surf);border:1px solid var(--line);border-radius:6px;padding:8px 14px;margin-top:12px;cursor:pointer}
 .note{font-size:.8rem;color:var(--mut);margin-top:12px}
-@media (max-width:700px){.hero{grid-template-columns:1fr}.big{font-size:2rem}}
+@media (max-width:900px){.form{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:700px){.form{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{grid-template-columns:1fr}.big{font-size:2rem}}
 </style>
 </head>
 <body>
@@ -84,7 +85,7 @@ button{font:inherit;color:var(--ink);background:var(--surf);border:1px solid var
 <script>
 // Para compartir y sincronizar entre dispositivos sin login, pega aquí la URL de tu Firebase Realtime Database.
 // Ejemplo: "https://mi-proyecto-default-rtdb.firebaseio.com". Si queda vacío, se guarda solo en este dispositivo.
-const FIREBASE_URL="https://console.firebase.google.com/project/deudas-naturales/database/deudas-naturales-default-rtdb/data/~2F";
+const FIREBASE_URL="https://deudas-naturales-default-rtdb.firebaseio.com";
 
 const LS="plan_credito_v1";
 const $=id=>document.getElementById(id);
