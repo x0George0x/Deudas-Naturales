@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan de pagos del crédito</title>
+<style>
+:root{color-scheme:light;--bg:#f4f8fb;--surf:#ffffff;--ink:#26343f;--mut:#6c7d8a;--line:#e0e8ee;--acc:#2f8f6b;--int:#c9763f;--cap:#2f8f6b;--paid:#e8f6ee;--soft:#f7fafc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Georgia,"Times New Roman",serif}
+main{max-width:1060px;margin:0 auto;padding:24px 16px 40px}
+h1{font-size:1.6rem;margin:0 0 4px}
+p.sub{margin:0 0 8px;color:var(--mut)}
+#estado{font-size:.85rem;color:var(--mut);margin:0 0 14px}
+.panel{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:16px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--mut)}
+input,select{font:inherit;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:8px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.hero{margin:20px 0;display:grid;grid-template-columns:1fr 1.3fr;gap:12px}
+.big{font-size:2.4rem;font-weight:700;color:var(--acc);line-height:1.1}
+.k{font-size:.85rem;color:var(--mut)}
+.v{font-size:1.15rem;font-weight:700}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.bar{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:6px 0 4px;background:var(--line)}
+.bar i{display:block;height:100%}
+.wrap{overflow-x:auto;margin-top:16px;border:1px solid var(--line);border-radius:10px;background:var(--surf)}
+table{border-collapse:collapse;width:100%;min-width:1040px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
+th{font-size:.82rem;color:var(--mut);font-weight:600;background:var(--soft)}
+td.i{color:var(--int)}td.c{color:var(--cap)}
+tr.paid td{background:var(--paid)}
+tfoot td{font-weight:700;border-bottom:0;background:var(--soft)}
+input.ex{width:120px;text-align:right;padding:5px 8px}
+input.fp{padding:4px 6px}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--acc);cursor:pointer}
+button{font:inherit;color:var(--ink);background:var(--surf);border:1px solid var(--line);border-radius:6px;padding:8px 14px;margin-top:12px;cursor:pointer}
+.note{font-size:.8rem;color:var(--mut);margin-top:12px}
+@media (max-width:700px){.hero{grid-template-columns:1fr}.big{font-size:2rem}}
+</style>
+</head>
+<body>
+<main>
+<h1>Plan de pagos del crédito</h1>
+<p class="sub">Cuota fija mensual. Cada mes muestra interés, abono a capital, si ya se pagó y en qué fecha.</p>
+<p id="estado" role="status">Cargando…</p>
+
+<section class="panel form" aria-label="Datos del crédito">
+<label>Monto del crédito (COP)<input id="monto" type="text" inputmode="numeric" value="22.000.000"></label>
+<label>Tasa efectiva anual (%)<input id="tasa" type="number" step="0.01" min="0" value="8"></label>
+<label>Plazo (meses)<input id="plazo" type="number" step="1" min="1" max="360" value="12"></label>
+<label>Primera cuota<input id="inicio" type="month" value="2026-11"></label>
+<label>Con cada abono extra<select id="modo"><option value="plazo">Mantener cuota y acortar plazo</option><option value="cuota">Mantener plazo y bajar cuota</option></select></label>
+</section>
+
+<section class="hero" aria-live="polite">
+<div class="panel">
+<div class="k">Cuota mensual</div>
+<div class="big" id="cuota">—</div>
+<div class="k" id="tm">—</div>
+</div>
+<div class="panel stats">
+<div><div class="k">Cuotas pagadas</div><div class="v" id="npag" style="color:var(--acc)">—</div></div>
+<div><div class="k">Pagado a la fecha</div><div class="v" id="pagado">—</div></div>
+<div><div class="k">Saldo pendiente de capital</div><div class="v" id="pend">—</div></div>
+<div><div class="k">Total a pagar</div><div class="v" id="ttot">—</div></div>
+<div><div class="k">Total intereses</div><div class="v" id="tint" style="color:var(--int)">—</div></div>
+<div><div class="k">Intereses ahorrados</div><div class="v" id="tahorro" style="color:var(--acc)">—</div></div>
+<div style="grid-column:1/-1"><div class="k">Avance de pagos</div><div class="bar"><i id="bp" style="background:var(--acc)"></i></div><div class="k" id="bpl">—</div></div>
+</div>
+</section>
+
+<div class="wrap">
+<table>
+<thead><tr><th>Pagado</th><th>N.º</th><th>Mes</th><th>Saldo inicial</th><th>Cuota</th><th>Interés</th><th>Abono a capital</th><th>Abono extra</th><th>Fecha de pago</th><th>Saldo final</th></tr></thead>
+<tbody id="rows"></tbody>
+<tfoot id="foot"></tfoot>
+</table>
+</div>
+<button id="reset" type="button">Quitar abonos extra</button>
+<p class="note">Marca “Pagado” cuando se pague el mes: la fecha se llena con el día de hoy y puedes cambiarla. El abono extra se aplica a capital después de la cuota de ese mes. Con “acortar plazo” la cuota sigue igual y el crédito termina antes; con “bajar cuota” el plazo se mantiene. La tasa mensual es equivalente a la efectiva anual: (1 + EA)^(1/12) − 1. Valores redondeados al peso.</p>
+</main>
+<script>
+// Para compartir y sincronizar entre dispositivos sin login, pega aquí la URL de tu Firebase Realtime Database.
+// Ejemplo: "https://mi-proyecto-default-rtdb.firebaseio.com". Si queda vacío, se guarda solo en este dispositivo.
+const FIREBASE_URL="https://console.firebase.google.com/project/deudas-naturales/database/deudas-naturales-default-rtdb/data/~2F";
+
+const LS="plan_credito_v1";
+const $=id=>document.getElementById(id);
+const fmt=n=>"$ "+Math.round(n).toLocaleString("es-CO");
+const meses=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const hoy=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const extras={},pagos={};
+let cargado=false,aplicando=false,ultimo="",tmr=null,pendiente=false;
+function num(s){return parseFloat(String(s).replace(/\./g,"").replace(/[^0-9]/g,""))||0}
+const estado=t=>{$("estado").textContent=t};
+
+function calc(){
+  const P=num($("monto").value), ea=parseFloat($("tasa").value)||0, n=Math.max(1,parseInt($("plazo").value)||1);
+  const modo=$("modo").value;
+  const i=Math.pow(1+ea/100,1/12)-1;
+  const pm=(S,r)=>i===0?S/r:S*i/(1-Math.pow(1+i,-r));
+  const base=pm(P,n);
+  const [y0,m0]=($("inicio").value||"2026-11").split("-").map(Number);
+  let saldo=P,ti=0,te=0,tp=0,real=0,lastC=base,pagTot=0,nPag=0,pend=P,html="";
+  for(let k=1;k<=n;k++){
+    const d=new Date(y0,m0-1+(k-1),1), mes=meses[d.getMonth()]+" "+d.getFullYear();
+    if(saldo<1){html+=`<tr><td></td><td>${k}</td><td>${mes}</td><td colspan="6" style="color:var(--mut)">Crédito pagado</td><td>${fmt(0)}</td></tr>`;continue}
+    const cuota=modo==="cuota"?pm(saldo,n-k+1):base;
+    const int=saldo*i, pay=Math.min(cuota,saldo+int), cap=pay-int;
+    let s2=saldo-cap; if(s2<1)s2=0;
+    const ex=extras[k]||0, e=Math.min(ex,s2);
+    s2-=e; if(s2<1)s2=0;
+    ti+=int;te+=e;tp+=pay+e;real++;lastC=pay;
+    const pg=(k in pagos);
+    if(pg){pagTot+=pay+e;nPag++;pend=s2}
+    html+=`<tr class="${pg?"paid":""}"><td><input type="checkbox" class="pg" data-k="${k}" ${pg?"checked":""} aria-label="Pagado ${mes}"></td><td>${k}</td><td>${mes}</td><td>${fmt(saldo)}</td><td>${fmt(pay)}</td><td class="i">${fmt(int)}</td><td class="c">${fmt(cap)}</td><td><input class="ex" data-k="${k}" inputmode="numeric" placeholder="0" value="${ex?ex.toLocaleString("es-CO"):""}" aria-label="Abono extra en ${mes}"></td><td>${pg?`<input type="date" class="fp" data-k="${k}" value="${pagos[k]||""}" aria-label="Fecha de pago ${mes}">`:"—"}</td><td>${fmt(s2)}</td></tr>`;
+    saldo=s2;
+  }
+  $("rows").innerHTML=html;
+  $("foot").innerHTML=`<tr><td colspan="4">Totales</td><td>${fmt(tp-te)}</td><td class="i">${fmt(ti)}</td><td class="c">${fmt(tp-te-ti)}</td><td>${fmt(te)}</td><td colspan="2"></td></tr>`;
+  $("cuota").textContent=fmt(base);
+  let t="Tasa mensual equivalente: "+(i*100).toFixed(4).replace(".",",")+" %";
+  if(modo==="cuota"&&te>0)t+=". Cuota después de los abonos: "+fmt(lastC);
+  $("tm").textContent=t;
+  $("tint").textContent=fmt(ti);
+  $("ttot").textContent=fmt(tp);
+  $("tahorro").textContent=fmt(Math.max(0,(base*n-P)-ti));
+  $("npag").textContent=nPag+" de "+real;
+  $("pagado").textContent=fmt(pagTot);
+  $("pend").textContent=fmt(pend);
+  const pp=tp>0?Math.min(100,pagTot/tp*100):0;
+  $("bp").style.width=pp+"%";
+  $("bpl").textContent=pp.toFixed(1).replace(".",",")+" % del total pagado";
+  guardar();
+}
+
+/* ---------- guardado ---------- */
+const m=src=>Object.fromEntries(Object.entries(src).map(([k,v])=>["m"+k,v]));
+const um=src=>{const r={};if(src)for(const k in src){if(src[k]!==null&&src[k]!==undefined)r[String(k).replace(/^m/,"")]=src[k]}return r};
+const actual=()=>({monto:$("monto").value,tasa:$("tasa").value,plazo:$("plazo").value,inicio:$("inicio").value,modo:$("modo").value,extras:Object.fromEntries(Object.entries(extras).filter(([k,v])=>v>0)),pagos:{...pagos}});
+const norm=s=>JSON.stringify([s.monto,s.tasa,s.plazo,s.inicio,s.modo,Object.entries(s.extras||{}).filter(([k,v])=>v>0).sort((a,b)=>a[0]-b[0]),Object.entries(s.pagos||{}).sort((a,b)=>a[0]-b[0])]);
+const pack=s=>({monto:s.monto,tasa:s.tasa,plazo:s.plazo,inicio:s.inicio,modo:s.modo,extras:m(s.extras),pagos:m(s.pagos)});
+const unpack=d=>({monto:d.monto,tasa:d.tasa,plazo:d.plazo,inicio:d.inicio,modo:d.modo,extras:um(d.extras),pagos:um(d.pagos)});
+const url=()=>FIREBASE_URL.replace(/\/$/,"")+"/credito.json";
+
+function guardar(){
+  if(!cargado||aplicando)return;
+  const s=actual(),j=norm(s);
+  if(j===ultimo)return;
+  try{localStorage.setItem(LS,JSON.stringify(s))}catch(e){}
+  if(!FIREBASE_URL){ultimo=j;estado("Guardado solo en este dispositivo.");return}
+  clearTimeout(tmr);pendiente=true;estado("Guardando…");
+  tmr=setTimeout(()=>{
+    fetch(url(),{method:"PUT",body:JSON.stringify(pack(s))})
+      .then(r=>{if(!r.ok)throw 0;ultimo=j;estado("Guardado en la nube a las "+new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"}))})
+      .catch(()=>estado("No se pudo guardar en la nube. Se guardó en este dispositivo."))
+      .finally(()=>{pendiente=false});
+  },600);
+}
+function aplicar(d){
+  aplicando=true;
+  $("monto").value=d.monto||"22.000.000";
+  $("tasa").value=d.tasa||"8";
+  $("plazo").value=d.plazo||"12";
+  $("inicio").value=d.inicio||"2026-11";
+  $("modo").value=d.modo||"plazo";
+  for(const k in extras)delete extras[k];
+  for(const k in pagos)delete pagos[k];
+  Object.assign(extras,d.extras||{});
+  Object.assign(pagos,d.pagos||{});
+  calc();
+  aplicando=false;
+}
+
+/* ---------- eventos ---------- */
+$("monto").addEventListener("input",e=>{const v=num(e.target.value);e.target.value=v?v.toLocaleString("es-CO"):"";calc()});
+["tasa","plazo","inicio","modo"].forEach(id=>$(id).addEventListener("input",calc));
+$("rows").addEventListener("input",e=>{
+  const k=e.target.dataset.k; if(!k||!e.target.classList.contains("ex"))return;
+  extras[k]=num(e.target.value); calc();
+  const el=document.querySelector('input.ex[data-k="'+k+'"]');
+  if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}
+});
+$("rows").addEventListener("change",e=>{
+  const k=e.target.dataset.k; if(!k)return;
+  if(e.target.classList.contains("pg")){if(e.target.checked)pagos[k]=hoy();else delete pagos[k];calc()}
+  else if(e.target.classList.contains("fp")){pagos[k]=e.target.value;calc()}
+});
+$("reset").addEventListener("click",()=>{for(const k in extras)delete extras[k];calc()});
+
+/* ---------- arranque ---------- */
+(async()=>{
+  try{const l=JSON.parse(localStorage.getItem(LS)||"null");if(l)aplicar(l)}catch(e){}
+  ultimo=norm(actual());
+  if(!FIREBASE_URL){cargado=true;calc();estado("Se guarda solo en este dispositivo. Para compartirlo, configura la base de datos (ver instrucciones).");return}
+  try{
+    const r=await fetch(url());
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    if(d){aplicar(unpack(d));ultimo=norm(actual());estado("Datos cargados desde la nube.")}
+    else{ultimo="";estado("Listo. Los cambios se guardan en la nube.")}
+  }catch(e){estado("No se pudo conectar con la nube. Se muestran los datos de este dispositivo.")}
+  cargado=true;calc();
+  setInterval(async()=>{
+    if(pendiente||(document.activeElement&&document.activeElement.tagName==="INPUT"))return;
+    try{
+      const r=await fetch(url());if(!r.ok)return;
+      const d=await r.json();
+      if(d&&norm(unpack(d))!==ultimo&&!pendiente){aplicar(unpack(d));ultimo=norm(actual());estado("Actualizado con los últimos cambios.")}
+    }catch(e){}
+  },15000);
+})();
+</script>
+</body>
+</html>
